@@ -1,0 +1,1 @@
+# chess game (pet project by Alexander Postavets)
