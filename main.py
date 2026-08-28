@@ -24,3 +24,21 @@ class Logger():
     def view(self):
         for line in reversed(self._log):
             print(line)
+
+class Defeated:
+    """class discribes a box
+    with defeated pieces"""
+
+    def __init__(self):
+        self.white = []
+        self.black = []
+
+    # display lines with defeated pieces
+    def view(self):
+        print(f"{' '.join(map(str, self.white))}")
+        print(f"{' '.join(map(str, self.white))}")
+
+    # add a piece in corresponding list, depending on the color
+    def add(self, obj):
+        if obj is not None:
+            self.__dict__[obj.color].append(obj)
