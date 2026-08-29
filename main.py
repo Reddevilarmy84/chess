@@ -1,9 +1,10 @@
 # chess game (pet project by Alexander Postavets)
 
 class Logger():
-
-    """the class describes the
-    event logging in the game"""
+    """
+    The class describes the
+    event logging in the game.
+    """
     
     def __init__(self):
         self._log = list('' for line in range(4))
@@ -26,8 +27,10 @@ class Logger():
             print(line)
 
 class Defeated:
-    """class discribes a box
-    with defeated pieces"""
+    """
+    the class discribes a box
+    with defeated pieces.
+    """
 
     def __init__(self):
         self.white = []
