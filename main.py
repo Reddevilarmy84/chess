@@ -33,22 +33,30 @@ class Logger():
 
 
 class ChessDesk:
-    fill_char = "*"
-    cor_table = {
-        k:v for v,k in chain(enumerate("abcdefgh"), enumerate("12345678"))
-    }
+
+    # символ пустой клетки
+    fill_char = "\u25a2"
+
+    # таблица соответствия координат
+    horizontal = "ABCDEFGH"
+    vertical = "87654321"
 
     @classmethod
-    def convert(cls, coordinates: str) -> tuple:
-        return tuple(
-            cls.cor_table.get(char.lower()) for char in coordinates
-        )
+    def chess_to_matrix(cls, coordinates: str) -> tuple(int, int):
+        x, y = coordinates.upper()
+        return cls.horizontal.index(x), cls.vertical.index(y)
+
+    @classmethod
+    def matrix_to_chess(cls, coordinates: tuple(int, int)) -> str:
+        x, y = coordinates
+        return cls.horizontal[x] + cls.vertical[y]
 
     def __init__(self):
         self.matrix = [
             [self.fill_char for _ in range(8)]
             for _ in range(8)
         ]
+
         self.defeated = []
 
     def __str__(self):
@@ -58,16 +66,16 @@ class ChessDesk:
         )
 
     def __getitem__(self, coordinates: str):
-        col, row = self.convert(coordinates)
-        return self.matrix[7 - row][col]
+        x, y = self.chess_to_matrix(coordinates)
+        return self.matrix[y][x]
 
     def __setitem__(self, coordinates, obj):
-        col, row = self.convert(coordinates)
-        self.matrix[7 - row][col] = obj
+        x, y = self.chess_to_matrix(coordinates)
+        self.matrix[y][x] = obj
 
     def __delitem__(self, coordinates):
-        col, row = self.convert(coordinates)
-        self.matrix[7 - row][col] = self.fill_char
+        x, y = self.chess_to_matrix(coordinates)
+        self.matrix[y][x] = self.fill_char
 
     def display(self):
         u_indent = 2
