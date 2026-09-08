@@ -31,25 +31,6 @@ class Logger():
             print(line)
         print()
 
-class Defeated:
-    """
-    the class discribes a box
-    with defeated pieces.
-    """
-
-    def __init__(self):
-        self.white = []
-        self.black = []
-
-    # display lines with defeated pieces
-    def view(self):
-        print(f"{' '.join(map(str, self.white))}")
-        print(f"{' '.join(map(str, self.white))}")
-
-    # add a piece in corresponding list, depending on the color
-    def add(self, obj):
-        if obj is not None:
-            self.__dict__[obj.color].append(obj)
 
 class ChessDesk:
     fill_char = "*"
@@ -68,6 +49,7 @@ class ChessDesk:
             [self.fill_char for _ in range(8)]
             for _ in range(8)
         ]
+        self.defeated = []
 
     def __str__(self):
         return ''.join(
