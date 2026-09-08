@@ -20,10 +20,10 @@ class Logger():
         self._log = self._log[-4:]
 
     # add new err record
-        def err(self, *args):
-            for arg in args:
-                self._log.append(f" INFO {str(arg)}")
-            self._log = self._log[-4:]
+    def err(self, *args):
+        for arg in args:
+            self._log.append(f" INFO {str(arg)}")
+        self._log = self._log[-4:]
 
     # display the log
     def display(self):
