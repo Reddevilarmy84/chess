@@ -65,6 +65,13 @@ class ChessDesk:
 
     @classmethod
     def matrix_to_chess(cls, coordinates: tuple(int, int)) -> str:
+        """
+        Метод для преобразования
+        кортежа из списочных индексов
+        в строку шахматных координат.
+        Input(tuple[int, int]): (0, 7)
+        Output(str): "A1"
+        """
         x, y = coordinates
         return cls.horizontal[x] + cls.vertical[y]
 
