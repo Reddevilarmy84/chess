@@ -84,7 +84,7 @@ class ChessDesk:
         # список поверженных фигур
         self.defeated = []
 
-    def __str__(self):
+    def __repr__(self):
         return ''.join(
             f"{' '.join(row)}\n"
             for row in self.matrix
