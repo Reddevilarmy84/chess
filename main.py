@@ -52,7 +52,14 @@ class ChessDesk:
     vertical = "87654321"
 
     @classmethod
-    def chess_to_matrix(cls, coordinates: str) -> tuple(int, int):
+    def chess_to_matrix(cls, coordinates: str) -> tuple[int, int]:
+        """
+        Метод для преобразования
+        шахматных координат в списочные индексы
+        для доступа к элементам матрицы.
+        Input(str): "A1"
+        Output(tuple[int, int]): (0, 7)
+        """
         x, y = coordinates.upper()
         return cls.horizontal.index(x), cls.vertical.index(y)
 
