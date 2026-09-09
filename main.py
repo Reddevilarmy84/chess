@@ -98,7 +98,8 @@ class ChessDesk:
         x, y = self.chess_to_matrix(coordinates)
         self.matrix[y][x] = obj
         # фигура хранит свои текущие шахматные координаты
-        obj.coordinates = coordinates
+        if isinstance(obj, Piece):
+            obj.coordinates = coordinates
 
     def __delitem__(self, coordinates):
         x, y = self.chess_to_matrix(coordinates)
@@ -122,6 +123,14 @@ class ChessDesk:
 
         print()
 
-        print(' '.join(map(str, self.defeated)))
+        print(' ' * l_indent + ' '.join(map(str, self.defeated)))
 
         print("\n" * d_indent)
+
+
+
+# тесты
+desk = ChessDesk()
+desk.defeated.append("Q")
+desk["A1"] = "R"
+desk.display()
