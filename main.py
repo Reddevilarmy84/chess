@@ -97,9 +97,15 @@ class ChessDesk:
     def __setitem__(self, coordinates, obj):
         x, y = self.chess_to_matrix(coordinates)
         self.matrix[y][x] = obj
+        # фигура хранит свои текущие шахматные координаты
+        obj.coordinates = coordinates
 
     def __delitem__(self, coordinates):
         x, y = self.chess_to_matrix(coordinates)
+        obj = self.matrix[y][x]
+        # съеденная фигура попадает в список self.defeated
+        if isinstance(obj, Piece):
+            self.defeated.add(obj)
         self.matrix[y][x] = self.fill_char
 
     def display(self):
