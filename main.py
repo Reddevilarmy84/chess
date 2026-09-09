@@ -109,8 +109,8 @@ class ChessDesk:
         self.matrix[y][x] = self.fill_char
 
     def display(self):
-        u_indent = 2
-        d_indent = 2
+        u_indent = 1
+        d_indent = 1
         l_indent = os.get_terminal_size().columns // 2 - 16
 
         print("\n" * u_indent)
@@ -119,5 +119,9 @@ class ChessDesk:
             print(f"{' ' * l_indent}{9 - line_num}   {'    '.join(row)}\n")
 
         print(" " * (l_indent - 1) + "    ".join(" ABCDEFGH"))
+
+        print()
+
+        print(' '.join(map(str, self.defeated)))
 
         print("\n" * d_indent)
