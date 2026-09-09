@@ -64,7 +64,7 @@ class ChessDesk:
         return cls.horizontal.index(x), cls.vertical.index(y)
 
     @classmethod
-    def matrix_to_chess(cls, coordinates: tuple(int, int)) -> str:
+    def matrix_to_chess(cls, coordinates: tuple[int, int]) -> str:
         """
         Метод для преобразования
         кортежа из списочных индексов
@@ -76,11 +76,12 @@ class ChessDesk:
         return cls.horizontal[x] + cls.vertical[y]
 
     def __init__(self):
+        # матрица для хранения обьектов шахматных фигур
         self.matrix = [
             [self.fill_char for _ in range(8)]
             for _ in range(8)
         ]
-
+        # список поверженных фигур
         self.defeated = []
 
     def __str__(self):
