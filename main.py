@@ -4,11 +4,12 @@ from itertools import chain
 # chess game (pet project by Alexander Postavets)
 class GameError(Exception):
     ...
-    
+
 class Logger():
     """
-    The class describes the
-    event logging in the game.
+    Класс описывает простой логер
+    с методом отображения в консоли группы
+    записей для описания хода игры.
     """
   
     def __init__(self):
