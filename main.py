@@ -128,7 +128,9 @@ class ChessDesk:
         print("\n" * d_indent)
 
 
-
+class Piece:
+    ...
+    
 # тесты
 desk = ChessDesk()
 desk.defeated.append("Q")
