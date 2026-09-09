@@ -1,13 +1,15 @@
-import time
 import os
 from itertools import chain
 
 # chess game (pet project by Alexander Postavets)
+class GameError(Exception):
+    ...
 
 class Logger():
     """
-    The class describes the
-    event logging in the game.
+    Класс описывает простой логер
+    с методом отображения в консоли группы
+    записей для описания хода игры.
     """
   
     def __init__(self):
@@ -17,23 +19,31 @@ class Logger():
     def info(self, *args):
         for arg in args:
             self._log.append(f" INFO {str(arg)}")
-        self._log = self._log[-4:]
 
     # add new err record
     def err(self, *args):
         for arg in args:
             self._log.append(f" INFO {str(arg)}")
-        self._log = self._log[-4:]
 
     # display the log
     def display(self):
-        for line in reversed(self._log):
+        for line in self._log[-1:-5:-1]:
             print(line)
-        print()
 
 
 class ChessDesk:
-
+    """
+    Класс описывает шахматную доску.
+    Изменяемая коллекция в виде матрицы.
+    Доступ к элементам осуществляется через
+    матричные координаты согласно правилам игры
+    в шахматы. К регистру не чувствителен.
+    Пример:
+    desk = ChessDesk()
+    obj = desk["A1"]
+    desk["B3"] = obj
+    del desk["h8"]
+    """
     # символ пустой клетки
     fill_char = "\u25a2"
 
@@ -42,24 +52,39 @@ class ChessDesk:
     vertical = "87654321"
 
     @classmethod
-    def chess_to_matrix(cls, coordinates: str) -> tuple(int, int):
+    def chess_to_matrix(cls, coordinates: str) -> tuple[int, int]:
+        """
+        Метод для преобразования
+        шахматных координат в списочные индексы
+        для доступа к элементам матрицы.
+        Input(str): "A1"
+        Output(tuple[int, int]): (0, 7)
+        """
         x, y = coordinates.upper()
         return cls.horizontal.index(x), cls.vertical.index(y)
 
     @classmethod
-    def matrix_to_chess(cls, coordinates: tuple(int, int)) -> str:
+    def matrix_to_chess(cls, coordinates: tuple[int, int]) -> str:
+        """
+        Метод для преобразования
+        кортежа из списочных индексов
+        в строку шахматных координат.
+        Input(tuple[int, int]): (0, 7)
+        Output(str): "A1"
+        """
         x, y = coordinates
         return cls.horizontal[x] + cls.vertical[y]
 
     def __init__(self):
+        # матрица для хранения обьектов шахматных фигур
         self.matrix = [
             [self.fill_char for _ in range(8)]
             for _ in range(8)
         ]
-
+        # список поверженных фигур
         self.defeated = []
 
-    def __str__(self):
+    def __repr__(self):
         return ''.join(
             f"{' '.join(row)}\n"
             for row in self.matrix
@@ -72,14 +97,21 @@ class ChessDesk:
     def __setitem__(self, coordinates, obj):
         x, y = self.chess_to_matrix(coordinates)
         self.matrix[y][x] = obj
+        # фигура хранит свои текущие шахматные координаты
+        if isinstance(obj, Piece):
+            obj.coordinates = coordinates
 
     def __delitem__(self, coordinates):
         x, y = self.chess_to_matrix(coordinates)
+        obj = self.matrix[y][x]
+        # съеденная фигура попадает в список self.defeated
+        if isinstance(obj, Piece):
+            self.defeated.add(obj)
         self.matrix[y][x] = self.fill_char
 
     def display(self):
-        u_indent = 2
-        d_indent = 2
+        u_indent = 1
+        d_indent = 1
         l_indent = os.get_terminal_size().columns // 2 - 16
 
         print("\n" * u_indent)
@@ -89,4 +121,18 @@ class ChessDesk:
 
         print(" " * (l_indent - 1) + "    ".join(" ABCDEFGH"))
 
+        print()
+
+        print(' ' * l_indent + ' '.join(map(str, self.defeated)))
+
         print("\n" * d_indent)
+
+
+class Piece:
+    ...
+    
+# тесты
+desk = ChessDesk()
+desk.defeated.append("Q")
+desk["A1"] = "R"
+desk.display()
