@@ -132,7 +132,8 @@ class Piece:
     ...
     
 # тесты
+os.system("clear")
 desk = ChessDesk()
-desk.defeated.append("Q")
-desk["A1"] = "R"
+desk.defeated.append("\u2654")
+desk["A1"] = "\u265a"
 desk.display()
