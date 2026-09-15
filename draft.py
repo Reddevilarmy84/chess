@@ -53,8 +53,9 @@ class ChessDesk:
     # символ пустой клетки шахматной доски
     fill_char = [
         '\u25a2',
+        
         ' '
-        ][0]
+        ][1]
     
     # таблица соответствия координат
     horizontal = "ABCDEFGH"
@@ -174,13 +175,21 @@ class ChessDesk:
         l_indent = os.get_terminal_size().columns // 2 - 16 
         
         print("\n" * u_indent)
+
+        print(" " * (l_indent + 2) + "\u2500" * 33)
             
         for line_num, row in enumerate(self.matrix, start=1):
             
-            print(f"{' ' * l_indent}{9 - line_num}   {'   '.join(map(str, row))}\n")
+            print(f"{' ' * l_indent}{9 - line_num} | {' | '.join(map(str, row))} |")
+
+            if line_num != 8:
+
+                print(" " * (l_indent + 2) + "|\u2500\u2500\u2500" * 8 + "|")
+
+        print(" " * (l_indent + 2) + "\u2500" * 33)
             
-        # print(" " * (l_indent) + "   ".join(" ABCDEFGH"))
-        print(" " * (l_indent + 4) + "A   B    C   D   E    F   G   H")
+        print(" " * (l_indent) + "   ".join(" ABCDEFGH"))
+        # print(" " * (l_indent + 4) + "A   B    C   D   E    F   G   H")
         
         print()
         
