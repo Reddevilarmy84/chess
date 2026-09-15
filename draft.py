@@ -648,4 +648,390 @@ class Game:
            ] ):
            raise GameError(f"не верные координаты '{player_input}'")
         
+        # нельзя сделать ход на ту же клетку
+        if player_input[:2].upper() == player_input[2:].upper():
+            raise GameError(f"координаты совпадают '{player_input}'")                                            
+    def run(self):
+        """
+        Запуск цикла игры.
+        """
+        
+        # расставляем фигуры на доске      
+        for piece in chain(
+            self.pieces["w"],
+            self.pieces["b"],
+            ):
+            self.desk[piece.coordinates] = piece
+            
+        while True:
+            
+            # имитация обновлентя экрана
+            # os.system("clear")
+            print("\n" * 10)
+            
+            print(f" Chess by Alexander Postavets(v0.1)©    {self.white_player} vs {self.black_player}")
+            # отображенте доски
+            self.desk.display()
+            
+            # отображение лога
+            self.logger.display()
+            
+            if hasattr(self, "game_over"):
+                break
+            
+            if self.debug:
+                
+                try:
+                    inp = self.instructions.pop(0)
+                    
+                except:
+                    self.debug = False
+                    continue
+                
+            elif self.black_player == "ai" and self.whose_move == 'b':
+                    inp = self.ai.suggest_a_move()
+                    
+            elif self.white_player == "ai" and self.whose_move == 'w':
+                    inp = self.ai.suggest_a_move()
+                    
+            else:                   
+                inp = input(f" ходят {self.whose_move}: ")
+                    
+            try:
+                x = self.make_a_move(inp)
+                if x: self.game_over = True
+                
+                
+            except Exception as e:
+                self.logger.err(
+            f'{type(e).__name__}: {e}'
+                   )
+            finally:
+                del inp
+                
+            print("\n" * 10)
+            
+    def make_a_move(self, player_input):
+        """
+        Функция выполняет шахматный ход,
+        анализируя данные введенные
+        игроком.
+        """
+        # если фигура сьедена, заполняем этот текст для отображения в логе
+        check = ''
+        mate = ''
+        eat_txt = ''
+        enemy_color = 'w' if self.whose_move == 'b' else 'b'
+        enemy_king = self.kings[enemy_color]
+              
+        # функция проверяет ввод, ожидая корректные шахматные координаты
+        self.check_player_input(
+            player_input
+           )
+        
+        # координаты исходной клетки
+        source = player_input[:2].upper()
+        
+        # координаты клетки назначения
+        destination = player_input[2:].upper()
+        
+        # обьект на исходной клетке
+        source_obj = self.desk[source]
+        
+        # обьект на клетке назначения
+        destination_obj = self.desk[destination]
+        
+        # нельзя сделать ход с пустой клетки
+        if source_obj == self.desk.fill_char:
+            raise GameError(f"исходная клетка пуста {source} --> {destination}")
+        
+        # нельзя ходить черными если мейсас ход белых и наоборот
+        if source_obj.color != self.whose_move:
+            raise GameError(f"ходят {self.whose_move} {source}({source_obj}) -> {destination}({destination_obj})")
+            
+        # нельзя ходить не по своей траектории
+        if not source_obj.can_move(destination):
+            raise GameError(f"{source_obj.name} так не ходит. {source}({source_obj}) --> {destination}({destination_obj})")
+            
+        # проверка: фигуры на пути(препятствия)        
+        interval_pieces = self.desk.get_interval_pieces(source, destination)
+        
+        # нельзя ходить сквозь другие фигуры
+        if interval_pieces:
+            raise GameError(f"на траектории {source}({source_obj}) -> {destination}({destination_obj}) есть фигуры {"".join(map(str, interval_pieces))}")
+            
+        # проверка: есть ли на клетке назначения фигура
+        if isinstance(destination_obj, Piece):
+            # нельзя есть фигуру того же цвета
+            if source_obj.color == destination_obj.color:
+                raise GameError(f"клетка назначения занята {source}({source_obj}) --> {destination}({destination_obj})")
+                
+            # добавили в хранилище съеденную фигуру
+            self.desk.defeated.append(
+                destination_obj)
+            
+            # добавили в лог кого сьели
+            eat_txt = f"Сьел {destination_obj}"
+        # проверка Мат себе
+        
+        # перемещение фигуры с исходной клетки на клетку назначения
+        del self.desk[source]        
+        self.desk[destination] = source_obj
+        
+        # проверка на шах сопернику
+        if source_obj.can_eat(
+            self.kings[enemy_color]
+            ):
+            check = "ШАХ!"
+            
+            # король соперника проверяет себя на мат
+        if  self.kings[enemy_color].mate():     
+            mate = "МАТ!"  
+                    
+        # записываем в лог событие    
+        self.logger.info(f"{source}({source_obj}) --> {destination}({destination_obj}) {eat_txt} {check} {mate}")
+        
+        
+        
+        if mate or (enemy_king in self.desk.defeated):
+            game.logger.info(f"Игра окончена. Победили {'Белые' if self.whose_move == 'w' else 'Черные'}")
+            return True
+            
+        if game.logger.records > 1000:
+            game.logger.info("ничья, так и будем бегать")
+            return True
+            
+        # передаем ход сопернику
+        self.whose_move = "b" if self.whose_move == "w" else "w" 
+
+           
+class Ai:
+    """
+    Имитирует поведение игрока.
+    """
+    def who_can_be_eaten(self) -> defaultdict:
+        """
+        Метод проверяет, какие фигуры
+        можно сьесть.
+        """
+        self_color = game.whose_move
+        enemy_color = "b" if game.whose_move == "w" else "w"
+        
+        who_can_be_eaten = defaultdict(list)
+        
+        for self_piece in game.pieces[self_color]:
+            
+            if self_piece in game.desk.defeated:
+                continue
+            
+            enemy_pieces = copy(game.pieces[enemy_color])
+            
+            # сортировка вражеских фигур по атрибуту приоритета
+            enemy_pieces.sort(key=lambda x:x.priority)
+            
+            for enemy in enemy_pieces:
+                
+                if enemy in game.desk.defeated:
+                    continue
+                
+                if self_piece.can_eat(enemy):
+                    who_can_be_eaten[self_piece].append(enemy)
+                    
+        # сортировка словаря по атрибуту приоритета первой фигуры в значениях
+        who_can_be_eaten = {
+            k:v
+            for k,v in sorted(who_can_be_eaten.items(), key=lambda x:x[1][0].priority)
+        }
+                            
+        return who_can_be_eaten
+        
+    def where_can_go(self):
+        
+        self_color = game.whose_move
+        
+        where_can_go = defaultdict(list)
+        
+        # собираем живые дружественные фигуры в список
+        pieces = [piece for piece in game.pieces[self_color] if piece not in game.desk.defeated]
+        
+        for piece in pieces:
+                
+            destinations = piece.get_allowed_destinations()
+            
+                                                 
+            free_squares = []
+            
+            for coordinates in destinations:
+                interval = game.desk.get_interval_coordinates(
+                    piece.coordinates,
+                    coordinates
+                   )
+                
+                pieces_on_interval = [
+                    coordinates
+                    for coordinates in interval
+                    if isinstance(
+                        game.desk[coordinates],
+                        Piece
+                       )
+                       ]
+                
+                if game.desk[coordinates] == game.desk.fill_char and not pieces_on_interval and not piece.can_be_eaten_on(coordinates):
+                                   
+                    free_squares.append(
+                        coordinates
+                       )
+                
+            if free_squares:
+                where_can_go[piece].extend(
+                    free_squares
+                   )
+        
+        return where_can_go
+               
+    def suggest_a_move(self):
+        """
+        Метод возвращает координаты
+        предложенные AI.
+        """        
+        self_color = game.whose_move
+        
+        # анализ: не под швхом ли король        
+        check = game.kings[self_color].check()
+        
+        if check:
+            print("AI: королю поставлен шах:")
+            self_king = game.kings[self_color]
+                                    
+            enemies_in_check = [game.desk[i] for i in check if isinstance(game.desk[i], Piece) and game.desk[i].color != self_color]
+            
+            empty_squares = [i for i in check if game.desk[i] == game.desk.fill_char and not self_king.can_be_eaten_on(i)]
+            
+            for i in empty_squares:
+                print(i, self_king.can_be_eaten_on(i))
+                
+            if empty_squares:
+                print(f"Могу убрать короля на: {" ".join(empty_squares)}")
+            
+            if enemies_in_check:
+                print(f"Могу съесть налетчика: {" ".join(map(str, enemies_in_check))}")
+            
+            self_king = game.kings[self_color]
+            
+            destination = random.choice(list(i.coordinates for i in enemies_in_check) if enemies_in_check else check)
+        
+            print(f"хожу так: {self_king.coordinates}({self_king}) -> {destination}({game.desk[destination]})")
+            
+            # input("делаю ход? ")
+        
+            return self_king.coordinates + destination
+        
+        # анализ, кого кем можно сьесть
+        who_can_be_eaten = self.who_can_be_eaten()
+        
+        wcbe_keys = list(who_can_be_eaten.keys())
+        
+        if wcbe_keys:
+            # future feature: проверить не подвергаешь ли опасности короля, шаху или мату.
+            
+            whom = wcbe_keys[0]
+            
+            who = who_can_be_eaten[whom][0]
+  
+  
+            print(f"AI: ходят {'белые' if self_color == 'w' else 'черные'}")
+            
+            print("кем кого можно сьесть:")
+                     
+            for self_piece, enemies in who_can_be_eaten.items():
+                
+                print(f"     {self_piece}{self_piece.coordinates} ->", end=' ')
+                
+                for enemy in enemies:
+                    
+                    print(f"{enemy}{enemy.coordinates}", end=", ")
+                    
+                print("")
+                
+            print(f"буду ходить так: {whom}{whom.coordinates} -> {who}{who.coordinates}")
+                        
+            # input("делаю ход?")
+            
+            return whom.coordinates + who.coordinates
+                
+        # анализ, кем куда пойти, чтобы следующим ходом можно было сьесть
+        
+        # здесь могла быть рекурсия анализов, но пока нет
+        
+        # рандомный ход
+        where_can_go = self.where_can_go()
+        
+        
+                    
+        print("AI: могу пойти сюда:\n")
+        for k, v in where_can_go.items():
+            print(f"{k}{k.coordinates} -> {" ".join(v)}")
+                      
+        selected_piece = random.choice(list(where_can_go))
+        
+        # список безопасных клеток где нас не сьедят
        
+        safe_destinations = [i for i in where_can_go[selected_piece] if not selected_piece.can_be_eaten_on(i)]
+        
+        print(f"здесь не съедят{" ".join(safe_destinations)}")
+                   
+        destination = random.choice(safe_destinations if safe_destinations else where_can_go[selected_piece])
+        
+        print(f"\nмой выбор: {selected_piece}{selected_piece.coordinates} на {destination}")
+        
+        # input("делаю ход?")
+               
+        return selected_piece.coordinates + destination       
+        
+        # если ни к чему не удалось прийти
+        coordinates = input(f" ходят {game.whose_move}. AI: я пока плохо играю. Поможешь с ходом? ")
+        
+        return coordinates
+
+                    
+if __name__ == "__main__":
+    
+    instructions = {
+        
+        # мат в 4 хода
+        1: [
+        "e2e4",
+        "e7e5",
+        "f1c4",
+        "f8c5",
+        "d1h5",
+        "a7a5",
+        "h5f7"
+        ],
+        
+        # мат 4 хода(3 хода, без мата)
+        2: [
+        "e2e4",
+        "e7e5",
+        "f1c4",
+        "f8c5",
+        "d1h5",
+        "a7a5",
+        ],
+        3: [
+        ]
+    }
+    
+    game = Game()
+    
+    game.white_player = 'ai'
+    game.black_player = 'ai'
+    
+    game.debug = True
+    
+    # если есть список инструкций, ходы в нем выполняются автоматически при game.debug=True
+    game.instructions = instructions[3]
+    
+    # запуск цикла игры   
+    game.run()
+    
