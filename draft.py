@@ -19,10 +19,10 @@ class Logger:
     """
     Логер.
     """
-    len_log = 4
+    len_log = 3
     
     def __init__(self):
-        self.log = ["\n" for line in range(5)]
+        self.log = [" " for line in range(self.len_log)]
         self.records = 0
     
     def info(self, *args):
@@ -53,9 +53,8 @@ class ChessDesk:
     # символ пустой клетки шахматной доски
     fill_char = [
         '\u25a2',
-        
         ' '
-        ][1]
+        ][0]
     
     # таблица соответствия координат
     horizontal = "ABCDEFGH"
@@ -175,41 +174,31 @@ class ChessDesk:
         l_indent = os.get_terminal_size().columns // 2 - 16 
         
         print("\n" * u_indent)
-
-        print(" " * (l_indent + 2) + "\u2500" * 33)
             
         for line_num, row in enumerate(self.matrix, start=1):
             
-            print(f"{' ' * l_indent}{9 - line_num} | {' | '.join(map(str, row))} |")
-
-            if line_num != 8:
-
-                print(" " * (l_indent + 2) + "|\u2500\u2500\u2500" * 8 + "|")
-
-        print(" " * (l_indent + 2) + "\u2500" * 33)
+            print(f"{' ' * l_indent}{9 - line_num}   {'   '.join(map(str, row))}\n")
             
-        print(" " * (l_indent) + "   ".join(" ABCDEFGH"))
-        # print(" " * (l_indent + 4) + "A   B    C   D   E    F   G   H")
+        # print(" " * (l_indent) + "   ".join(" ABCDEFGH"))
+        print(" " * (l_indent + 4) + "A   B    C   D   E    F   G   H")
         
         print()
         
         print(
-            " " * (l_indent) + " ".join(map(str, self.defeated[:16]))
+            " " * (l_indent) + " ".join(map(str, [i for i in sorted(self.defeated, key=lambda x:x.priority) if i.color == "w"]))
             )
             
         print(
-            " " * (l_indent) + " ".join(map(str, self.defeated[16:]))
-        )
+            " " * (l_indent) + " ".join(map(str, [i for i in sorted(self.defeated, key=lambda x:x.priority) if i.color == "b"]))
+            )
         
         print("\n" * d_indent)
         
                 
-class Piece: 
-    allowed_moves = [] 
+class Piece:
       
     def __init__(self, coordinates: str, color: str):
         self.coordinates = coordinates
-        self.prevous_coordinates = None
         self.color = color
         
     def __repr__(self):
@@ -231,7 +220,7 @@ class Piece:
         for x2, y2 in self.allowed_moves:
             
             condidate = x1 + x2, y1 - y2
-            
+            # конструкция не позволяет длбавить в итоговый список координаты выходящте за пределы доски
             try:
                 destination = game.desk.matrix_to_chess(condidate)
                 
@@ -270,6 +259,11 @@ class Piece:
         Метод проверяет может ли фигура
         сьесть переданную фигуру.
         """
+        
+        # если фигура уже сьедена, то нет
+        if piece in game.desk.defeated:
+            return False
+            
         if isinstance(self, Pawn):
             
             if piece.coordinates.upper() in self.get_allowed_dest_for_pawn_to_eat():
@@ -281,8 +275,11 @@ class Piece:
             # список координат на пути к фигуре
             cors_list =  game.desk.get_interval_coordinates(self.coordinates, piece.coordinates)
             
-            # если на пути к фигуре нет препятствующих ходу фигур
-            if not [cors for cors in cors_list if isinstance(game.desk[cors], Piece)]:
+            # если на пути к фигуре нет препятствующих ходу фигур отличных от себя
+            # game.desk[cors] != self
+            # нужно для того, чтобы
+            # перемещаясь для проверки по доске фигура не стала препятствием включенным в список
+            if not [cors for cors in cors_list if isinstance(game.desk[cors], Piece) and game.desk[cors] != self]:
                 
                 # можно есть
                 return True      
@@ -298,40 +295,65 @@ class Piece:
         коордитатах.
         """
         enemy_color = "w" if self.color == "b" else "b"
-         
-        piece_to_check = self.__class__(coordinates, self.color)
-            
-        obj = game.desk[coordinates]
-            
+        
+        obj_on_coordinates = game.desk[coordinates]
+        
+ 
         # список фигур, которые покушаются на текущую фигуру
-        enemies = {piece for piece in game.pieces[enemy_color] if piece not in game.desk.defeated}           
+        enemies = [piece for piece in game.pieces[enemy_color] if piece not in game.desk.defeated]      
             
         # если на клетке соперник
-        if isinstance(obj, Piece) and obj.color != self.color:
+        if isinstance(obj_on_coordinates, Piece) and obj_on_coordinates.color != self.color:
                                 
-            # убираем его из сета, так как он будет сьеден
-            enemies.discard(obj)
+            # убираем его из списка, так как он будет сьеден
+            enemies.remove(obj_on_coordinates)
             
         who_can_eat_list = []
         
-        old_obj = game.desk[coordinates]
-            
-        game.desk[coordinates] = piece_to_check
+        old_cors = self.coordinates
+        
+        del game.desk[old_cors]
+        game.desk[coordinates] = self
         
         for enemy in enemies:
             # если вражеская фигура может сьесть текущую, включаем ее в список  
-            
-            
             if enemy.can_eat(
-                piece_to_check
+                self
                 ):
                 who_can_eat_list.append(
                     enemy
                    )
                    
-        game.desk[coordinates] = old_obj
+        print(f"{self}({old_cors}) can_be_eaten_on {coordinates} by {who_can_eat_list}")
         
-        return who_can_eat_list 
+        game.desk[old_cors] = self  
+        game.desk[coordinates] = obj_on_coordinates
+        
+        return who_can_eat_list
+        
+    def can_move_on_list(self):
+        """
+        Метод вернет список
+        координат для возможного
+        хода по траэкториям фигуры,
+        включая клетки с вражескими 
+        фигурами, исключая клетки с
+        дружественными фигурами.
+        То есть, куда фигура может
+        сделать ход по правилам
+        шахмат в текущем
+        окружении и на текущей
+        позиции.
+        Это может быть полезно для
+        рандомного хода или просчета
+        возможных ходов.
+        """
+
+        destinations = self.get_allowed_destinations()
+        
+        can_move_on_list = [coordinates for coordinates in destinations if game.desk[coordinates] == game.desk.fill_char or game.desk[coordinates].color != self.color]
+        
+        return can_move_on_list
         
 class Knight(Piece):
     def __init__(self, location, color):  
@@ -378,30 +400,28 @@ class King(Piece):
             "w": '\u2654'
                 }.get(self.color, "K")
     
-    def check(self):
+    def back_off(self):
         """
         Метод проверяет, не поставлен
         ли королю шах, и возвращает
         список координат, куда можно
         убрать короля.
         """
-        if self.can_be_eaten_on(self.coordinates):
             
-            destinations = self.get_allowed_destinations()
+        destinations = self.get_allowed_destinations()
             
-            back_off_destinations = []
+        back_off_destinations = []
             
-            for coordinates in destinations:
-                if not self.can_be_eaten_on(coordinates):
-                    obj = game.desk[coordinates]
-                    if isinstance(obj, Piece) and obj.color != self.color:
+        for coordinates in destinations:
+            
+            if not self.can_be_eaten_on(coordinates):
+                obj = game.desk[coordinates]
+                if isinstance(obj, Piece) and obj.color != self.color:
                         back_off_destinations.append(coordinates)
-                    elif obj == game.desk.fill_char:
-                        back_off_destinations.append(coordinates)
+                elif obj == game.desk.fill_char:
+                    back_off_destinations.append(coordinates)
             
-            return back_off_destinations
-            
-        return []
+        return back_off_destinations
                 
     def mate(self):
         """
@@ -409,31 +429,23 @@ class King(Piece):
         королю мат.
         """
         
-        # предикат вернет True, если на клетке фигура соперника или клетка пуста
-        def checker(cors):
-            if game.desk[cors] == game.desk.fill_char:
-                return True
-                
-            if game.desk[cors].color != self.color:
-                return True
-        
+        is_fill_char = lambda coordinates: game.desk[coordinates] == game.desk.fill_char
+                             
+        is_enemy = lambda coordinates: game.desk[coordinates].color != self.color
+               
         # ходы, куда королю можно идти в окружении фигур
         kings_destinations = [
-            cors
-            for cors in self.get_allowed_destinations()
-            if checker(cors)
+            coordinates
+            for coordinates in self.get_allowed_destinations()
+            if is_fill_char(coordinates) or is_enemy(coordinates)
             ]
             
-        kings_destinations.append(self.coordinates)
-        
-        
-            
+        kings_destinations.append(
+                self.coordinates
+               )
+                    
         for coordinates in kings_destinations:
-            
-            
-            
-            # game.logger.info(f"{self} на {coordinates} съедят {[i.__str__()+i.coordinates for i in self.can_be_eaten_on(piece, coordinates)]} {kings_destinations}")
-            
+
             # если есть координаты на которых никто не сьест
             if not self.can_be_eaten_on(coordinates):
                 return False
@@ -769,44 +781,43 @@ class Game:
         if interval_pieces:
             raise GameError(f"на траектории {source}({source_obj}) -> {destination}({destination_obj}) есть фигуры {"".join(map(str, interval_pieces))}")
             
-        # проверка: есть ли на клетке назначения фигура
+        #если на клетке назначения фигура
         if isinstance(destination_obj, Piece):
-            # нельзя есть фигуру того же цвета
+            # если фигура дружественная
             if source_obj.color == destination_obj.color:
                 raise GameError(f"клетка назначения занята {source}({source_obj}) --> {destination}({destination_obj})")
-                
-            # добавили в хранилище съеденную фигуру
+ 
             self.desk.defeated.append(
                 destination_obj)
             
-            # добавили в лог кого сьели
+            #в лог кого сьели
             eat_txt = f"Сьел {destination_obj}"
-        # проверка Мат себе
-        
+            
         # перемещение фигуры с исходной клетки на клетку назначения
-        del self.desk[source]        
-        self.desk[destination] = source_obj
+        del self.desk[source]    
+            
+        self.desk[destination] = source_obj           
         
+        enemy_king = self.kings[enemy_color]
+        # если он уже сьел короля?
         # проверка на шах сопернику
         if source_obj.can_eat(
-            self.kings[enemy_color]
+            enemy_king
             ):
             check = "ШАХ!"
-            
             # король соперника проверяет себя на мат
-        if  self.kings[enemy_color].mate():     
+            # если король уже в дифитэд - мат
+        if enemy_king in self.desk.defeated:     
             mate = "МАТ!"  
                     
-        # записываем в лог событие    
+        # записываем в лог событие
         self.logger.info(f"{source}({source_obj}) --> {destination}({destination_obj}) {eat_txt} {check} {mate}")
-        
-        
-        
-        if mate or (enemy_king in self.desk.defeated):
+                
+        if mate:
             game.logger.info(f"Игра окончена. Победили {'Белые' if self.whose_move == 'w' else 'Черные'}")
             return True
             
-        if game.logger.records > 1000:
+        if game.logger.records > 400:
             game.logger.info("ничья, так и будем бегать")
             return True
             
@@ -823,30 +834,48 @@ class Ai:
         Метод проверяет, какие фигуры
         можно сьесть.
         """
+        
+        # свой цвет
         self_color = game.whose_move
+        
+        # цвет соперника
         enemy_color = "b" if game.whose_move == "w" else "w"
         
+        # создаем новый defaultdict
         who_can_be_eaten = defaultdict(list)
         
+        # итерируемся по своим фигурам
         for self_piece in game.pieces[self_color]:
             
+            # если фигура сьедена, следующая итерация
             if self_piece in game.desk.defeated:
                 continue
             
+            # фигуры соперника
             enemy_pieces = copy(game.pieces[enemy_color])
             
             # сортировка вражеских фигур по атрибуту приоритета
             enemy_pieces.sort(key=lambda x:x.priority)
             
+            # итерируемся по врагам 
             for enemy in enemy_pieces:
-                
+               
+                # если враг сьеден пропускаем
                 if enemy in game.desk.defeated:
                     continue
                 
+                # если фигура-король сьест фигуру и сам будет сьеден, пропускаем             
                 if self_piece.can_eat(enemy):
-                    who_can_be_eaten[self_piece].append(enemy)
+                    if isinstance(self_piece, King) and self_piece.can_be_eaten_on(enemy.coordinates):
+                        continue
+                        
+                    who_can_be_eaten[
+                        self_piece
+                        ].append(
+                            enemy
+                           )
                     
-        # сортировка словаря по атрибуту приоритета первой фигуры в значениях
+        # сортировка словаря по атрибуту приоритета первой фигуры в значениях, чтобы съесть кого пожирнее
         who_can_be_eaten = {
             k:v
             for k,v in sorted(who_can_be_eaten.items(), key=lambda x:x[1][0].priority)
@@ -855,7 +884,14 @@ class Ai:
         return who_can_be_eaten
         
     def where_can_go(self):
-        
+        """
+        Метод возвращает словарь,
+        где ключами являются
+        дружественные фигуры а
+        значениями список координат,
+        куда фигура может БЕЗОПАСНО
+        сделать ход.
+        """
         self_color = game.whose_move
         
         where_can_go = defaultdict(list)
@@ -866,8 +902,7 @@ class Ai:
         for piece in pieces:
                 
             destinations = piece.get_allowed_destinations()
-            
-                                                 
+                        
             free_squares = []
             
             for coordinates in destinations:
@@ -901,56 +936,67 @@ class Ai:
     def suggest_a_move(self):
         """
         Метод возвращает координаты
-        предложенные AI.
+        предложенные AI с учетом
+        всевозможных факторов.
         """        
         self_color = game.whose_move
         
-        # анализ: не под швхом ли король        
-        check = game.kings[self_color].check()
+        self_king = game.kings[self_color]
         
-        if check:
-            print("AI: королю поставлен шах:")
-            self_king = game.kings[self_color]
+        print(f"AI: Начинаю думать.. делаю ход за {"Белых" if self_color == "w" else "Черных"}")
+        
+        # анализ: не под шахом ли король 
+        print("    Кто может съесть короля?")              
+        
+        if self_king.can_be_eaten_on(self_king.coordinates):
+            print("    Королю поставлен шах:")
+                       
+            back_offs = self_king.back_off()
                                     
-            enemies_in_check = [game.desk[i] for i in check if isinstance(game.desk[i], Piece) and game.desk[i].color != self_color]
+            enemies_in_check = [game.desk[i] for i in back_offs if isinstance(game.desk[i], Piece) and game.desk[i].color != self_color]
             
-            empty_squares = [i for i in check if game.desk[i] == game.desk.fill_char and not self_king.can_be_eaten_on(i)]
+            empty_squares = [i for i in back_offs if game.desk[i] == game.desk.fill_char and not self_king.can_be_eaten_on(i)]
             
             for i in empty_squares:
                 print(i, self_king.can_be_eaten_on(i))
                 
             if empty_squares:
-                print(f"Могу убрать короля на: {" ".join(empty_squares)}")
+                print(f"    Могу убрать короля на: {" ".join(empty_squares)}")
             
             if enemies_in_check:
-                print(f"Могу съесть налетчика: {" ".join(map(str, enemies_in_check))}")
-            
-            self_king = game.kings[self_color]
-            
-            destination = random.choice(list(i.coordinates for i in enemies_in_check) if enemies_in_check else check)
+                print(f"    Могу съесть налетчика: {" ".join(map(str, enemies_in_check))}")
+            try:
+                destination = random.choice(list(i.coordinates for i in enemies_in_check) if enemies_in_check else back_offs)
         
-            print(f"хожу так: {self_king.coordinates}({self_king}) -> {destination}({game.desk[destination]})")
+                print(f"    Буду ходить так: {self_king.coordinates}({self_king}) -> {destination}({game.desk[destination]})")
             
-            # input("делаю ход? ")
-        
-            return self_king.coordinates + destination
+                # input("делаю ход? ")
+  
+                return self_king.coordinates + destination
+                
+            except:
+                print("    Королю угрожают, но отступать ему некуда...")
+                # feat: здесь должен быть код, который жертвует другой фигурой, чтобы защитить короля, ечли такая есть
+            
+        else:
+            print(f"    Королю {self_king}({self_king.coordinates}) не угрожают")
         
         # анализ, кого кем можно сьесть
+        print("    Проверяю, кого кем могу сьесть..")
+        
         who_can_be_eaten = self.who_can_be_eaten()
         
         wcbe_keys = list(who_can_be_eaten.keys())
         
+        print(f"    Кем {wcbe_keys=}")
+        
         if wcbe_keys:
-            # future feature: проверить не подвергаешь ли опасности короля, шаху или мату.
             
             whom = wcbe_keys[0]
             
             who = who_can_be_eaten[whom][0]
-  
-  
-            print(f"AI: ходят {'белые' if self_color == 'w' else 'черные'}")
             
-            print("кем кого можно сьесть:")
+            print("    Кем кого можно сьесть:")
                      
             for self_piece, enemies in who_can_be_eaten.items():
                 
@@ -962,43 +1008,44 @@ class Ai:
                     
                 print("")
                 
-            print(f"буду ходить так: {whom}{whom.coordinates} -> {who}{who.coordinates}")
+            print(f"    Буду ходить так: {whom}{whom.coordinates} -> {who}{who.coordinates}")
                         
             # input("делаю ход?")
             
             return whom.coordinates + who.coordinates
                 
-        # анализ, кем куда пойти, чтобы следующим ходом можно было сьесть
-        
-        # здесь могла быть рекурсия анализов, но пока нет
-        
-        # рандомный ход
+        # анализ, кем куда пойти
         where_can_go = self.where_can_go()
+                           
+        print("    AI: могу пойти сюда:")
+        for friendly, enemies in where_can_go.items():
+            print(f"    {friendly}{friendly.coordinates} -> {" ".join(enemies)}")
         
-        
-                    
-        print("AI: могу пойти сюда:\n")
-        for k, v in where_can_go.items():
-            print(f"{k}{k.coordinates} -> {" ".join(v)}")
-                      
-        selected_piece = random.choice(list(where_can_go))
-        
-        # список безопасных клеток где нас не сьедят
-       
-        safe_destinations = [i for i in where_can_go[selected_piece] if not selected_piece.can_be_eaten_on(i)]
-        
-        print(f"здесь не съедят{" ".join(safe_destinations)}")
+        if where_can_go:              
+            selected_piece = random.choice(list(where_can_go))
                    
-        destination = random.choice(safe_destinations if safe_destinations else where_can_go[selected_piece])
+            destination = random.choice(
+                where_can_go[selected_piece]
+           )
         
-        print(f"\nмой выбор: {selected_piece}{selected_piece.coordinates} на {destination}")
+            print(f"    Мой выбор: {selected_piece}{selected_piece.coordinates} на {destination}")
         
-        # input("делаю ход?")
+            # input("делаю ход?")
                
-        return selected_piece.coordinates + destination       
+            return selected_piece.coordinates + destination       
         
+        print("    Не могу никуда пойти, это МАТ!")
+        
+        can_moves = self_king.can_move_on_list()
+                
+        random_cors = self_king.coordinates + random.choice(can_moves)
+                
+        if random_cors:
+            print(f"    Делаю рандомный ход: {random_cors}")
+            return random_cors
+            
         # если ни к чему не удалось прийти
-        coordinates = input(f" ходят {game.whose_move}. AI: я пока плохо играю. Поможешь с ходом? ")
+        coordinates = input(f"    Ходят {game.whose_move}. AI: я пока плохо играю. Поможешь с ходом? ")
         
         return coordinates
 
